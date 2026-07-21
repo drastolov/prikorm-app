@@ -237,6 +237,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sage)}
 .imp-btns button.ok.on{border-color:var(--sage-deep);background:var(--sage-soft);color:var(--sage-deep)}
 .imp-btns button.re.on{border-color:var(--clay);background:var(--clay-soft);color:var(--clay)}
 .rep-section{font-size:15px;font-weight:800;color:var(--clay);margin:22px 0 4px;padding-top:16px;border-top:1px solid var(--line)}
+.btn-del-allergy{border:0;background:var(--clay-soft);color:var(--clay);width:32px;height:32px;border-radius:50%;font-size:14px;font-weight:800;cursor:pointer;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -1145,13 +1146,23 @@ function repItemHTML(r){
     <span class="pill ${R[1]}">${R[0]}</span></div>`;
 }
 function allergyItemHTML(p){
-  return `<div class="rep-item" onclick="openProduct('${p.id}')">
+  return `<div class="rep-item">
     <span class="em">${p.em}</span>
     <div class="meta"><div class="nm">${p.name}</div><div class="why">Была реакция — обсудите с педиатром</div></div>
-    <span class="pill pill-clay">⚠️</span></div>`;
+    <button class="btn-del-allergy" onclick="removeAllergy('${p.id}')" title="Убрать из списка">✕</button>
+  </div>`;
 }
-function renderRepeat(){
-  const rep=repeatList();
+async function removeAllergy(pid){
+  haptic();
+  /* убираем все логи с симптомами для этого продукта */
+  state.logs=state.logs.filter(l=>!(l.pid===pid&&l.symptoms&&l.symptoms.length));
+  await save();
+  renderRepeat();
+  renderHome();
+  renderCatalog();
+  toast('Реакция убрана 💚');
+}
+function renderRepeat(){  const rep=repeatList();
   const alg=allergyList();
   let html = rep.length?rep.map(repItemHTML).join('')
     :'<div class="empty"><div class="e">🌿</div>Всё в ритме! Как только что-то будет пора повторить — оно появится здесь</div>';
