@@ -1192,8 +1192,61 @@ function renderProgress(){
 
 /* ================= INIT ================= */
 (async function(){
+  /* показываем экран загрузки пока читаем данные */
+  document.getElementById('scr-home').innerHTML=`
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60dvh;gap:16px">
+      <div style="font-size:44px">🌱</div>
+      <p style="color:var(--muted);font-weight:700">Загружаем ваши данные…</p>
+    </div>`;
+
   await load();
-  if(!state.onboarded)showOnb();
+
+  /* восстанавливаем разметку главной */
+  document.getElementById('scr-home').innerHTML=`
+  <div class="hello">
+    <h1 id="helloTitle">Привет!</h1>
+    <p class="sub" id="helloSub">Знакомим малыша с миром еды</p>
+  </div>
+  <div class="card">
+    <div class="plate-wrap">
+      <div class="plate">
+        <svg width="210" height="210" viewBox="0 0 210 210">
+          <circle cx="105" cy="105" r="92" fill="none" stroke="var(--sage-soft)" stroke-width="14"/>
+          <circle cx="105" cy="105" r="78" fill="none" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="2 6"/>
+          <circle id="plateRing" cx="105" cy="105" r="92" fill="none" stroke="var(--sage)" stroke-width="14" stroke-linecap="round" stroke-dasharray="578" stroke-dashoffset="578"/>
+        </svg>
+        <div class="plate-center">
+          <div class="plate-num" id="plateNum">0</div>
+          <div class="plate-lbl">из 100+ продуктов<br>до года</div>
+        </div>
+      </div>
+    </div>
+    <p class="sub" id="plateMsg" style="text-align:center;margin-top:8px"><span class="pm-title">Каждый новый продукт — маленькое открытие 💚</span><span class="pm-fact">Чтобы малыш принял новый вкус, мозгу нужно от 8 до 15 знакомств с ним.</span></p>
+  </div>
+  <div class="row-head">
+    <h2 style="margin:0">Что нового предложить сегодня</h2>
+    <button class="btn-refresh" onclick="shuffleSuggest()" aria-label="Обновить подборку">🔄</button>
+  </div>
+  <div class="suggest-row" id="suggestRow"></div>
+  <div style="height:16px"></div>
+  <h2>Пора повторить</h2>
+  <div id="homeRepeat"></div>
+  <div style="height:22px"></div>
+  <button class="sos-btn" onclick="openChoking()">
+    <span class="e">🆘</span>
+    <span class="t"><b>Если малыш подавился</b><span>Как отличить и что делать — сохраните заранее</span></span>
+    <span class="arr">→</span>
+  </button>
+  <button class="sos-btn sos-orange" onclick="openAllergy()">
+    <span class="e">🩺</span>
+    <span class="t"><b>Аллергия при прикорме</b><span>Как распознать реакцию и что делать</span></span>
+    <span class="arr">→</span>
+  </button>
+  <h2>Частые вопросы</h2>
+  <div id="faqList"></div>
+  <p class="foot">Источники: Solid Starts, ВОЗ, NHS, First Steps Nutrition, AAP</p>`;
+
+  if(!state.onboarded){ showOnb(); return; }
   renderHome();
 })();
 </script>
