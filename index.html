@@ -79,6 +79,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sage)}
 .pill-sky{background:var(--sky-soft);color:var(--sky)}
 .pill-green{background:var(--sage-soft);color:var(--sage-deep)}
 .pill-peach{background:var(--peach-soft);color:#C77E3B}
+.pill-iron{background:#EFE3F5;color:#7B4B96}
 
 /* ---------- catalog ---------- */
 .search{display:flex;gap:8px;margin-bottom:12px}
@@ -218,6 +219,24 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sage)}
 .serve-note{font-size:11.5px;color:var(--muted);font-style:italic;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
 .pm-title{display:block;font-weight:800;color:var(--sage-deep);font-size:14px;margin-bottom:5px}
 .pm-fact{display:block;font-size:12.5px;color:var(--muted);line-height:1.4}
+
+/* импорт уже введённых */
+#importScreen{position:fixed;inset:0;background:var(--cream);z-index:58;display:none;flex-direction:column;max-width:430px;margin:0 auto}
+#importScreen.active{display:flex}
+.import-head{padding:20px 18px 12px;background:var(--card);box-shadow:var(--shadow)}
+#importList{flex:1;overflow-y:auto;padding:14px 18px 90px}
+.import-footer{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:var(--card);box-shadow:0 -4px 20px rgba(78,122,97,.12)}
+.imp-cat{font-size:14px;font-weight:800;color:var(--sage-deep);margin:16px 0 8px}
+.imp-item{background:var(--card);border-radius:14px;padding:11px 13px;margin-bottom:8px;box-shadow:var(--shadow)}
+.imp-top{display:flex;align-items:center;gap:9px}
+.imp-top .em{font-size:22px}
+.imp-top .nm{flex:1;font-weight:700;font-size:14px}
+.imp-alg{font-size:10.5px;font-weight:800;color:var(--clay)}
+.imp-btns{display:flex;gap:7px;margin-top:9px}
+.imp-btns button{flex:1;border:2px solid var(--line);background:#fff;border-radius:11px;padding:8px 4px;font:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}
+.imp-btns button.ok.on{border-color:var(--sage-deep);background:var(--sage-soft);color:var(--sage-deep)}
+.imp-btns button.re.on{border-color:var(--clay);background:var(--clay-soft);color:var(--clay)}
+.rep-section{font-size:15px;font-weight:800;color:var(--clay);margin:22px 0 4px;padding-top:16px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -276,8 +295,31 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sage)}
       <input type="date" id="obDate">
       <div style="flex:1"></div>
       <div class="dots"><span></span><span></span><span class="on"></span></div>
-      <button class="btn btn-peach" onclick="finishOnb()">Готово 🎉</button>
+      <button class="btn btn-peach" onclick="onbNext(4)">Дальше</button>
     </div>
+
+    <div class="onb-step" data-step="4">
+      <button class="onb-back" onclick="onbNext(3)">← Назад</button>
+      <div class="onb-emoji">🥄</div>
+      <h1>Вы уже начали прикорм?</h1>
+      <p class="sub" style="margin:8px 0 18px">Если малыш уже что-то пробовал — отметьте эти продукты, чтобы трекер сразу показывал реальную картину.</p>
+      <button class="btn btn-green" style="margin-bottom:12px" onclick="finishOnb(false)">Начинаем с нуля</button>
+      <button class="btn btn-peach" onclick="finishOnb(true)">Да, уже вводили продукты</button>
+      <div style="flex:1"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ИМПОРТ УЖЕ ВВЕДЁННЫХ ============ -->
+<div id="importScreen">
+  <div class="import-head">
+    <h1 style="font-size:20px">Что малыш уже пробовал?</h1>
+    <p class="sub">Нажмите на продукт и выберите статус. Аллергены после отметки останутся в напоминаниях на повтор — так и должно быть.</p>
+    <input type="text" id="importSearch" placeholder="Найти продукт…" oninput="renderImport()" style="margin-top:10px">
+  </div>
+  <div id="importList"></div>
+  <div class="import-footer">
+    <button class="btn btn-peach" onclick="finishImport()">Готово — открыть трекер</button>
   </div>
 </div>
 
@@ -420,6 +462,8 @@ const RAW = [
 ];
 const PRODUCTS = RAW.map((r,i)=>({id:'p'+i,name:r[0],cat:r[1],alg:r[2]||0,em:r[3]||CATS[r[1]].e,note:r[4]||null,restricted:r[0]==='Мёд',custom:false}));
 const PLANT = ['veg','fruit','grain','legume','nut','spice'];
+/* Продукты с высоким содержанием железа (животного и растительного происхождения) */
+const HIGH_IRON = new Set(['Говядина','Телятина','Баранина','Печень','Индейка','Утка','Кролик','Свинина','Скумбрия','Сардины','Сельдь','Тунец','Мидии','Яйцо куриное','Яйцо перепелиное','Чечевица','Нут','Горох','Маш','Белая фасоль','Красная фасоль','Чёрная фасоль','Фасоль лима','Бобы фава','Тофу','Эдамаме','Темпе','Шпинат','Мангольд','Свекольная ботва','Гречка','Киноа','Амарант','Овсянка','Пшено','Тыквенные семечки','Семечки подсолнуха','Семена чиа','Семена конопли','Семена льна','Кунжут / тахини','Кешью','Миндаль','Фундук','Кедровые орехи','Курага','Финики','Чёрная смородина','Урюк']);
 const REACTIONS = {loved:['😍','В восторге'],calm:['🙂','Съел спокойно'],meh:['😐','Без энтузиазма'],refused:['🙅','Отказался']};
 const SYMPTOMS = {rash:'Сыпь / зуд',swell:'Отёк губ или век',gi:'Рвота или диарея',cough:'Кашель / хрипы',nose:'Насморк, красные глаза'};
 
@@ -671,18 +715,25 @@ function status(id){
 }
 function daysSince(id){
   const ls=logsFor(id); if(!ls.length)return null;
-  return Math.floor((Date.now()-new Date(ls[0].date))/864e5);
+  const dated=ls.filter(l=>l.date); if(!dated.length)return null;
+  return Math.floor((Date.now()-new Date(dated[0].date))/864e5);
 }
 function introducedCount(){return allProducts().filter(p=>status(p.id)!=='untried').length;}
+
+/* продукты с аллергией — отдельно */
+function allergyList(){
+  return allProducts().filter(p=>status(p.id)==='allergy');
+}
 function repeatList(){
   const out=[];
   for(const p of allProducts()){
     const st=status(p.id); if(st==='untried'||st==='allergy')continue;
     const d=daysSince(p.id);
-    if(d===0)continue; /* сегодня уже давали — из списка убираем */
-    if(p.alg&&d>=3)out.push({p,reason:'alg',d});
-    else if(st==='work'&&d>=2)out.push({p,reason:'keep',d});
-    else if(!p.alg&&st!=='work'&&d>7)out.push({p,reason:'old',d});
+    /* аллергены из 9-ки: всегда предлагаем на повтор (кроме реакции — она выше) */
+    if(p.alg){ if(d===null||d>=3)out.push({p,reason:'alg',d:d||99}); continue; }
+    if(d===0)continue; /* сегодня уже давали */
+    if(st==='work'&&(d===null||d>=2))out.push({p,reason:'keep',d:d||99});
+    else if(d!==null&&d>7)out.push({p,reason:'old',d});
   }
   const w={alg:0,keep:1,old:2};
   return out.sort((a,b)=>w[a.reason]-w[b.reason]||b.d-a.d);
@@ -709,11 +760,58 @@ function toast(msg){
 function showOnb(){document.getElementById('onb').classList.add('active');onbNextStep(0);}
 function onbNextStep(n){document.querySelectorAll('.onb-step').forEach(s=>s.classList.toggle('active',+s.dataset.step===n));}
 function onbNext(n){haptic();onbNextStep(n);}
-async function finishOnb(){
+async function finishOnb(withImport){
   state.child={name:document.getElementById('obName').value.trim()||'малыш',birth:document.getElementById('obDate').value};
   state.onboarded=true; await save();
   document.getElementById('onb').classList.remove('active');
+  if(withImport){ openImport(); return; }
   renderHome(); toast('Добро пожаловать! 💚');
+}
+
+/* ===== ЭКРАН ИМПОРТА УЖЕ ВВЕДЁННЫХ ===== */
+let importMarks={}; /* id -> 'ok' | 'allergy' */
+function openImport(){
+  importMarks={};
+  document.getElementById('importScreen').classList.add('active');
+  renderImport();
+}
+function renderImport(){
+  const q=(document.getElementById('importSearch').value||'').toLowerCase();
+  let html='';
+  for(const c of Object.keys(CATS)){
+    const items=PRODUCTS.filter(p=>p.cat===c&&!p.restricted&&p.name.toLowerCase().includes(q));
+    if(!items.length)continue;
+    html+=`<div class="imp-cat">${CATS[c].e} ${CATS[c].n}</div>`;
+    html+=items.map(p=>{
+      const m=importMarks[p.id];
+      return `<div class="imp-item">
+        <div class="imp-top"><span class="em">${p.em}</span><span class="nm">${p.name}</span>${p.alg?'<span class="imp-alg">аллерген</span>':''}</div>
+        <div class="imp-btns">
+          <button class="ok ${m==='ok'?'on':''}" onclick="markImport('${p.id}','ok')">✓ Ввели, всё хорошо</button>
+          <button class="re ${m==='allergy'?'on':''}" onclick="markImport('${p.id}','allergy')">⚠️ Была реакция</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('importList').innerHTML=html||'<p class="sub" style="padding:20px 0">Ничего не найдено</p>';
+}
+function markImport(id,type){
+  haptic();
+  importMarks[id]=(importMarks[id]===type)?undefined:type;
+  renderImport();
+}
+async function finishImport(){
+  for(const [id,type] of Object.entries(importMarks)){
+    if(!type)continue;
+    if(type==='ok'){
+      state.logs.push({pid:id,date:null,reaction:'calm',symptoms:[],note:'отмечено при регистрации'});
+    }else if(type==='allergy'){
+      state.logs.push({pid:id,date:null,reaction:'refused',symptoms:['import_reaction'],note:'реакция отмечена при регистрации'});
+    }
+  }
+  await save();
+  document.getElementById('importScreen').classList.remove('active');
+  renderHome(); toast('Готово! Трекер обновлён 💚');
 }
 
 /* ================= HOME ================= */
@@ -831,7 +929,7 @@ function openAllergy(){
 
     <div class="choke-block choke-warn">
       <h3>⏱️ Когда появляется реакция</h3>
-      <p>Обычно в течение нескольких минут после контакта с аллергеном, реже — до 2 часов. Отложенные реакции (через несколько часов) бывают при ФПИЭС — о ней ниже.</p>
+      <p>Обычно в течение нескольких минут после контакта с аллергеном, реже — до 2 часов. Отложенные реакции (через несколько часов) бывают при FPIES — о нём ниже.</p>
     </div>
 
     <div class="choke-block choke-warn">
@@ -841,7 +939,6 @@ function openAllergy(){
         <div>• несколько отдельных волдырей или лёгкий зуд кожи</div>
         <div>• зуд или насморк, чихание</div>
         <div>• зуд во рту</div>
-        <div>• лёгкая тошнота или однократная рвота</div>
       </div>
       <p style="margin-top:8px">Даже один такой признак — сигнал прекратить кормление и обратиться к педиатру до следующего введения продукта. Если появились <b>два и больше</b> симптомов — это уже тяжёлая реакция.</p>
     </div>
@@ -870,7 +967,7 @@ function openAllergy(){
     </div>
 
     <div class="choke-block choke-warn">
-      <h3>🕐 Отложенная реакция: ФПИЭС</h3>
+      <h3>🕐 Отложенная реакция: FPIES</h3>
       <p>Симптомы появляются через 1–4 часа: обильная повторная рвота и/или диарея. Похоже на кишечную инфекцию, поэтому часто не распознают. Если после одного и того же продукта через несколько часов начинается сильная рвота — обратитесь к педиатру.</p>
     </div>
 
@@ -974,7 +1071,7 @@ function openProduct(id){
   document.getElementById('sheetBody').innerHTML=`
     <div class="sheet-head"><span class="em">${p.em}</span>
       <div><h1 style="font-size:22px">${p.name}</h1>
-      <div style="margin-top:4px">${stPill} <span class="pill pill-green">${CATS[p.cat].n}</span>${p.custom?' <span class="pill pill-sky">мой продукт</span>':''}</div></div>
+      <div style="margin-top:4px">${stPill} <span class="pill pill-green">${CATS[p.cat].n}</span>${HIGH_IRON.has(p.name)?' <span class="pill pill-iron">Высокий уровень Fe⁺</span>':''}${p.custom?' <span class="pill pill-sky">мой продукт</span>':''}</div></div>
     </div>
     ${d!==null?`<p class="sub" style="margin-bottom:10px">Последний раз: ${d===0?'сегодня':d+' дн. назад'}</p>`:''}
     ${tips}
@@ -1041,15 +1138,29 @@ async function saveCustom(){
 const REASONS={alg:['🔁','pill-clay','Аллерген — держим 2+ раза в неделю'],old:['⏳','pill-sky','Давно не давали'],keep:['🌱','pill-green','Продолжаем знакомить — подложите к любимому']};
 function repItemHTML(r){
   const R=REASONS[r.reason];
+  const dtxt = r.d===99||r.d===null ? 'ещё не давали' : (r.d===0?'сегодня':r.d+' дн. назад');
   return `<div class="rep-item" onclick="openProduct('${r.p.id}')">
     <span class="em">${r.p.em}</span>
-    <div class="meta"><div class="nm">${r.p.name}</div><div class="why">${R[2]} · ${r.d===0?'сегодня':r.d+' дн. назад'}</div></div>
+    <div class="meta"><div class="nm">${r.p.name}</div><div class="why">${R[2]} · ${dtxt}</div></div>
     <span class="pill ${R[1]}">${R[0]}</span></div>`;
+}
+function allergyItemHTML(p){
+  return `<div class="rep-item" onclick="openProduct('${p.id}')">
+    <span class="em">${p.em}</span>
+    <div class="meta"><div class="nm">${p.name}</div><div class="why">Была реакция — обсудите с педиатром</div></div>
+    <span class="pill pill-clay">⚠️</span></div>`;
 }
 function renderRepeat(){
   const rep=repeatList();
-  document.getElementById('repList').innerHTML=rep.length?rep.map(repItemHTML).join('')
+  const alg=allergyList();
+  let html = rep.length?rep.map(repItemHTML).join('')
     :'<div class="empty"><div class="e">🌿</div>Всё в ритме! Как только что-то будет пора повторить — оно появится здесь</div>';
+  if(alg.length){
+    html += `<div class="rep-section">⚠️ Была реакция</div>
+      <p class="sub" style="margin-bottom:10px">Эти продукты пока не предлагаем повторно. Обсудите их с педиатром.</p>`
+      + alg.map(allergyItemHTML).join('');
+  }
+  document.getElementById('repList').innerHTML=html;
 }
 
 /* ================= PROGRESS ================= */
